@@ -3,9 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/lib/supabase';
 import { inviteMemberSchema, InviteMemberInput } from '@/lib/validations';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Send } from 'lucide-react';
 
 export function InviteMemberForm({ organizationId }: { organizationId: string }) {
   const queryClient = useQueryClient();
@@ -36,16 +34,37 @@ export function InviteMemberForm({ organizationId }: { organizationId: string })
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className='flex gap-2 items-end'>
-      <div className='flex-1'>
-        <Label>Invite by Email</Label>
-        <Input {...register('email')} type='email' placeholder='member@example.com' />
-        {errors.email && <p className='text-red-500 text-sm'>{errors.email.message}</p>}
-        {errors.root && <p className='text-red-500 text-sm'>{errors.root.message}</p>}
+    <form onSubmit={handleSubmit(onSubmit)} className='space-y-3'>
+      <div className='flex gap-3'>
+        <div className='flex-1'>
+          <input
+            {...register('email')}
+            type='email'
+            placeholder='member@example.com'
+            className='w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 outline-none transition-all'
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(99,102,241,0.3)' }}
+          />
+        </div>
+        <button
+          type='submit'
+          disabled={isSubmitting}
+          className='flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-white text-sm transition-all flex-shrink-0'
+          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 0 20px rgba(99,102,241,0.3)' }}>
+          <Send className='h-4 w-4' />
+          {isSubmitting ? 'Sending...' : 'Invite'}
+        </button>
       </div>
-      <Button type='submit' disabled={isSubmitting}>
-        {isSubmitting ? 'Sending...' : 'Invite'}
-      </Button>
+
+      {errors.email && (
+        <p className='text-red-400 text-sm'>{errors.email.message}</p>
+      )}
+
+      {errors.root && (
+        <div className='px-4 py-3 rounded-xl text-red-400 text-sm'
+          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
+          {errors.root.message}
+        </div>
+      )}
     </form>
   );
 }
