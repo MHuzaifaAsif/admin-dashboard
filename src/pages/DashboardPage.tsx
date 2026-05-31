@@ -53,6 +53,7 @@ export default function DashboardPage() {
             <div>
               <h2 className='font-semibold'>{org.name}</h2>
               <p className='text-sm text-gray-500'>Created {new Date(org.created_at).toLocaleDateString()}</p>
+              <p className='text-sm text-gray-400'>Click to view members</p>
             </div>
             <span className={`text-xs font-medium px-2 py-1 rounded-full ${badgeColors[org.type]}`}>
               {org.type}
