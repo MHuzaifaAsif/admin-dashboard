@@ -2,19 +2,23 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Organization } from '@/types';
 import { CreateOrgDialog } from '@/components/organizations/CreateOrgDialog';
+import { Building2, Calendar, ChevronRight, Search } from 'lucide-react';
 
-const badgeColors: Record<string, string> = {
-  School: 'bg-blue-100 text-blue-800',
-  Nonprofit: 'bg-green-100 text-green-800',
-  Business: 'bg-purple-100 text-purple-800',
+const typeConfig: Record<string, { color: string; bg: string; border: string }> = {
+  School: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)' },
+  Nonprofit: { color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.3)' },
+  Business: { color: '#a78bfa', bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.3)' },
 };
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<string>('All');
 
   const { data: orgs, isLoading } = useQuery({
     queryKey: ['organizations', user?.id],
@@ -29,36 +33,146 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  if (isLoading) return <div className='py-8 text-center text-gray-500'>Loading organizations...</div>;
+  const filtered = orgs?.filter(org => {
+    const matchesSearch = org.name.toLowerCase().includes(search.toLowerCase());
+    const matchesType = filterType === 'All' || org.type === filterType;
+    return matchesSearch && matchesType;
+  });
 
   return (
     <div>
+      {/* Page header */}
       <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold'>My Organizations</h1>
+        <div>
+          <h1 className='text-3xl font-bold text-white mb-1'>My Organizations</h1>
+          <p className='text-sm' style={{ color: '#64748b' }}>
+            {filtered?.length ?? 0} of {orgs?.length ?? 0} organization{orgs?.length !== 1 ? 's' : ''}
+          </p>
+        </div>
         <CreateOrgDialog onSuccess={() => queryClient.invalidateQueries({ queryKey: ['organizations'] })} />
       </div>
 
-      {orgs?.length === 0 && (
-        <div className='text-center py-16 text-gray-400'>
-          No organizations yet. Create your first one!
+      {/* Search and filter bar */}
+      <div className='flex gap-3 mb-6'>
+        {/* Search input */}
+        <div className='flex-1 flex items-center gap-3 px-4 py-3 rounded-xl'
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(99,102,241,0.3)' }}>
+          <Search className='h-4 w-4 flex-shrink-0' style={{ color: '#64748b' }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder='Search organizations...'
+            className='flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm'
+          />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className='text-gray-500 hover:text-white transition-colors text-xs'>
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Type filter buttons */}
+        <div className='flex gap-2'>
+          {['All', 'School', 'Nonprofit', 'Business'].map(type => (
+            <button key={type} onClick={() => setFilterType(type)}
+              className='px-4 py-2 rounded-xl text-sm font-medium transition-all'
+              style={{
+                background: filterType === type ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.03)',
+                border: filterType === type ? '1px solid rgba(99,102,241,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                color: filterType === type ? '#818cf8' : '#64748b',
+              }}>
+              {type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className='space-y-3'>
+          {[1, 2, 3].map(i => (
+            <div key={i} className='h-24 rounded-2xl animate-pulse'
+              style={{ background: 'rgba(255,255,255,0.05)' }} />
+          ))}
         </div>
       )}
 
-      <div className='space-y-3'>
-        {orgs?.map(org => (
-          <div key={org.id}
-            className='bg-white border rounded-lg p-4 flex items-center justify-between hover:shadow-sm cursor-pointer transition'
-            onClick={() => navigate(`/organizations/${org.id}`)}
-          >
-            <div>
-              <h2 className='font-semibold'>{org.name}</h2>
-              <p className='text-sm text-gray-500'>Created {new Date(org.created_at).toLocaleDateString()}</p>
-            </div>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${badgeColors[org.type]}`}>
-              {org.type}
-            </span>
+      {/* Empty state - no orgs at all */}
+      {!isLoading && orgs?.length === 0 && (
+        <div className='flex flex-col items-center justify-center py-24 rounded-2xl'
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(99,102,241,0.3)' }}>
+          <div className='w-16 h-16 rounded-2xl flex items-center justify-center mb-4'
+            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)' }}>
+            <Building2 className='h-8 w-8' style={{ color: '#6366f1' }} />
           </div>
-        ))}
+          <h3 className='text-lg font-semibold text-white mb-2'>No organizations yet</h3>
+          <p className='text-sm mb-6' style={{ color: '#64748b' }}>Create your first organization to get started</p>
+          <CreateOrgDialog onSuccess={() => queryClient.invalidateQueries({ queryKey: ['organizations'] })} />
+        </div>
+      )}
+
+      {/* Empty state - no search results */}
+      {!isLoading && orgs && orgs.length > 0 && filtered?.length === 0 && (
+        <div className='flex flex-col items-center justify-center py-16 rounded-2xl'
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.08)' }}>
+          <Search className='h-10 w-10 mb-3' style={{ color: '#334155' }} />
+          <h3 className='text-lg font-semibold text-white mb-1'>No results found</h3>
+          <p className='text-sm' style={{ color: '#64748b' }}>
+            Try a different name or filter
+          </p>
+          <button onClick={() => { setSearch(''); setFilterType('All'); }}
+            className='mt-4 px-4 py-2 rounded-xl text-sm transition-all'
+            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: '#818cf8' }}>
+            Clear filters
+          </button>
+        </div>
+      )}
+
+      {/* Organizations list */}
+      <div className='space-y-3'>
+        {filtered?.map(org => {
+          const config = typeConfig[org.type] ?? typeConfig.Business;
+          return (
+            <div key={org.id}
+              className='group flex items-center justify-between p-5 rounded-2xl cursor-pointer transition-all duration-200'
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.background = 'rgba(99,102,241,0.08)';
+                (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(99,102,241,0.3)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)';
+                (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.08)';
+              }}
+              onClick={() => navigate(`/organizations/${org.id}`)}>
+
+              <div className='flex items-center gap-4'>
+                <div className='w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0'
+                  style={{ background: config.bg, border: `1px solid ${config.border}` }}>
+                  <Building2 className='h-6 w-6' style={{ color: config.color }} />
+                </div>
+                <div>
+                  <h2 className='font-semibold text-white text-lg'>{org.name}</h2>
+                  <div className='flex items-center gap-3 mt-1'>
+                    <span className='flex items-center gap-1 text-xs' style={{ color: '#64748b' }}>
+                      <Calendar className='h-3 w-3' />
+                      {new Date(org.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className='flex items-center gap-3'>
+                <span className='text-xs font-medium px-3 py-1 rounded-full'
+                  style={{ background: config.bg, border: `1px solid ${config.border}`, color: config.color }}>
+                  {org.type}
+                </span>
+                <ChevronRight className='h-5 w-5 text-gray-600 group-hover:text-gray-400 transition-colors' />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
